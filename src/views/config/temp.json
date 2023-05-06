@@ -1,0 +1,210 @@
+{
+    "id": 219,
+    "stopDate": null,
+    "startDate": null,
+    "ownerId": 239,
+    "scheduleStop": null,
+    "scheduledStop": false,
+    "approvalId": null,
+    "creatorName": "李彦君",
+    "name": "测试测试",
+    "creatorId": 239,
+    "status": "draft",
+    "scheduledStart": false,
+    "type": "standard",
+    "scheduleStart": null,
+    "killOnScheduleStop": false,
+    "fromTempalte": null,
+    "editorVersion": "2.0",
+    "ownerName": "李彦君",
+    "lastUpdated": "2023-04-24T11:34:36Z",
+    "dateCreated": "2023-04-24T11:33:28Z",
+    "definition": {
+        "subjectType": "customer",
+        "globalSetting": {},
+        "positions": {
+            "1": { "top": -75, "left": 518 },
+            "3": { "top": 260, "left": 446.75 },
+            "6": { "top": 372.5, "left": 375.5 },
+            "8": { "top": 372.5, "left": 518 },
+            "9": { "top": 485, "left": 375.5 },
+            "10": { "top": 147.5, "left": 518 },
+            "14": { "top": 260, "left": 660.5 }
+        },
+        "triggerType": "Standard",
+        "startStep": "10",
+        "startCriteria": {
+            "udo": { "objId": "customer" },
+            "isTemplate": false,
+            "id": 0,
+            "filters": {
+                "logicalOperator": "and",
+                "subFilters": [
+                    {
+                        "logicalOperator": "and",
+                        "conditions": [
+                            {
+                                "parameter": {},
+                                "property": "make_order",
+                                "description": {
+                                    "property": "订单相关事件-购买商品和服务",
+                                    "constraint": { "descStr": "", "descArr": [] },
+                                    "value": ""
+                                },
+                                "constraint": {},
+                                "category": "event.deal",
+                                "version": 2,
+                                "to_string": "订单相关事件-购买商品和服务"
+                            }
+                        ]
+                    }
+                ],
+                "version": 2
+            },
+            "type": "simple"
+        },
+        "steps": [
+            {
+                "id": "1",
+                "name": "开始\n订单相关事件-购买商品和服务",
+                "nextSteps": [{ "nextStep": "10" }],
+                "stepType": "delay",
+                "stepTimeout": 1
+            },
+            {
+                "id": "3",
+                "name": "属性判断\n订单统计属性-总订单金额 → 大于 → 500",
+                "nextSteps": [
+                    {
+                        "criteria": {
+                            "id": 0,
+                            "filters": {
+                                "logicalOperator": "and",
+                                "subFilters": [
+                                    {
+                                        "logicalOperator": "and",
+                                        "conditions": [
+                                            {
+                                                "parameter": {
+                                                    "value": "500",
+                                                    "operator": "greater_than"
+                                                },
+                                                "property": "orderTotalAmount",
+                                                "property_type": "Decimal",
+                                                "description": {
+                                                    "property": "订单统计属性-总订单金额",
+                                                    "constraint": { "descStr": "", "descArr": [] },
+                                                    "value": "大于 → 500"
+                                                },
+                                                "constraint": {},
+                                                "category": "order",
+                                                "to_string": "订单统计属性-总订单金额 → 大于 → 500"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "version": 2
+                            },
+                            "type": "complex"
+                        },
+                        "nextStep": "6",
+                        "label": "是"
+                    },
+                    { "isDefault": true, "nextStep": "8", "label": "否" }
+                ],
+                "stepType": "branch",
+                "nodeType": "conditionNode",
+                "isTemplate": false
+            },
+            {
+                "id": "6",
+                "name": "恭喜客户达标，并赠送一张50元优惠券\n",
+                "nextSteps": [{ "nextStep": "9" }],
+                "stepType": "action",
+                "nodeType": "smsNode",
+                "isTemplate": true,
+                "action": {
+                    "actionType": "send_sms",
+                    "actionBody": { "template": null, "sendIdentity": "customer" }
+                }
+            },
+            {
+                "id": "8",
+                "name": "结束",
+                "nextSteps": [],
+                "stepType": "done",
+                "nodeType": "endNode",
+                "success": true
+            },
+            {
+                "id": "9",
+                "name": "结束",
+                "nextSteps": [],
+                "stepType": "done",
+                "nodeType": "endNode",
+                "success": true
+            },
+            {
+                "id": "10",
+                "name": "客户属性判断\n(已取关 → Zeek订阅小助手)",
+                "nextSteps": [
+                    {
+                        "criteria": {
+                            "udo": { "objId": "customer" },
+                            "id": 0,
+                            "filters": {
+                                "logicalOperator": "and",
+                                "subFilters": [
+                                    {
+                                        "logicalOperator": "and",
+                                        "conditions": [
+                                            {
+                                                "parameter": {
+                                                    "parameter": {},
+                                                    "value": 6,
+                                                    "operator": "off_equal"
+                                                },
+                                                "property": "off_equal",
+                                                "description": {
+                                                    "property": "已取关",
+                                                    "constraint": { "descStr": "", "descArr": [] },
+                                                    "value": "Zeek订阅小助手"
+                                                },
+                                                "constraint": { "subscribe": false },
+                                                "category": "channel.wechat",
+                                                "to_string": "已取关 → Zeek订阅小助手"
+                                            }
+                                        ]
+                                    }
+                                ],
+                                "version": 2
+                            },
+                            "type": "complex"
+                        },
+                        "nextStep": "3",
+                        "label": "是"
+                    },
+                    { "isDefault": true, "nextStep": "14", "label": "否" }
+                ],
+                "stepType": "branch",
+                "nodeType": "conditionNode",
+                "config": { "identity": "attr" },
+                "isTemplate": false,
+                "subject": { "type": "customer" }
+            },
+            {
+                "id": "14",
+                "name": "结束",
+                "nextSteps": [],
+                "stepType": "done",
+                "nodeType": "endNode",
+                "success": true
+            }
+        ],
+        "setting": {
+            "continueAfterSucess": true,
+            "nonRestartableFromDb": true,
+            "Restartable": false
+        }
+    }
+}

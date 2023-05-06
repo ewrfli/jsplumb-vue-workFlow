@@ -1,6 +1,6 @@
 <template>
   <div class="node-item" ref="node"
-    :class="[(isActive || isSelected) ? 'active' : '']"
+    :class="[(isActive || isSelected) ? 'active' : '', node.type]"
     :style="flowNodeContainer"
     v-click-outside="setNotActive"
     @click="setActive"
@@ -8,15 +8,21 @@
     @mouseleave="hideAnchor"
     @dblclick.prevent="editNode"
     @contextmenu.prevent="onContextmenu">
-    <div class="log-wrap">
-      <img :src="node.logImg" alt="">
+    <div class=nodeDiv>
+      <div class="log-wrap">
+        <img :src="node.logImg" alt="">
+      </div>
+      <div class="nodeName-wrap">
+        <div class="node-name">{{node.nodeName}}</div>
+        <span class="node-desc">{{node.id}}</span>
+      </div>
+        <!--连线用--//触发连线的区域-->
+        <div class="node-anchor anchor-top" v-show="mouseEnter"></div>
+        <div class="node-anchor anchor-right" v-show="mouseEnter"></div>
+        <div class="node-anchor anchor-bottom" v-show="mouseEnter"></div>
+        <div class="node-anchor anchor-left" v-show="mouseEnter"></div>
     </div>
-    <div class="nodeName">{{node.nodeName}}</div>
-      <!--连线用--//触发连线的区域-->
-      <div class="node-anchor anchor-top" v-show="mouseEnter"></div>
-      <div class="node-anchor anchor-right" v-show="mouseEnter"></div>
-      <div class="node-anchor anchor-bottom" v-show="mouseEnter"></div>
-      <div class="node-anchor anchor-left" v-show="mouseEnter"></div>
+
   </div>
 </template>
 
@@ -55,14 +61,15 @@ export default {
     hideAnchor() {
       this.mouseEnter = false
     },
+    // 右键
     onContextmenu() {
       this.$contextmenu({
         items: [{
-          label: '删除',
+          label: '删除节点',
           disabled: false,
           icon: "",
           onClick: () => {
-            this.deleteNode()
+            this.toDeleteNode()
           }
         }],
         event,
@@ -72,6 +79,7 @@ export default {
       })
     },
     setActive() {
+      console.log('setActive点击节点',this.node)
       if(window.event.ctrlKey){
         this.isSelected = !this.isSelected
         return false
@@ -81,8 +89,10 @@ export default {
       setTimeout(() => {
         this.$emit("changeLineState", this.node.id, true)
       },0)
+
     },
     setNotActive() {
+      // console.log('setNotActive',this.node)
       if(!window.event.ctrlKey){
         this.isSelected = false
       }
@@ -114,8 +124,8 @@ export default {
         }
       })
     },
-    deleteNode() {
-      this.$emit("deleteNode", this.node)
+    toDeleteNode() {
+      this.$emit("toDeleteNode", this.node)
     }
   }
 };
@@ -123,17 +133,13 @@ export default {
 
 <style lang="less" scoped>
 @labelColor: #409eff;
-@nodeSize: 20px;
+@nodeSize: 10px;
 @viewSize: 10px;
 .node-item {
   position: absolute;
   display: flex;
-  height: 40px;
-  width: 120px;
   justify-content: center;
   align-items: center;
-  border: 1px solid #b7b6b6;
-  border-radius: 4px;
   cursor: move;
   box-sizing: content-box;
   z-index: 9995;
@@ -143,18 +149,41 @@ export default {
       display: block;
     }
   }
-  .log-wrap{
-    width: 40px;
-    height: 40px;
-    border-right: 1px solid  #b7b6b6;
+  .nodeDiv {
+    position: relative;
+    display: flex;
+    align-items: center;
+  
+    .log-wrap{
+      width: 40px;
+      height: 40px;
+      border: 1px solid #b7b6b6;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(211, 211, 236, 0.65);
+    }
+    .nodeName-wrap {
+      position: absolute;
+      width: 80px;
+      margin-left: calc(100% + 10px);
+
+      display: -webkit-box;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      overflow-wrap: break-word;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      text-align:left;
+      .node-name {
+        color: #011447;
+      }
+      .node-desc {
+        display: block;
+        color: #849bc0;
+        font-size: 13px;
+      }
+    }
   }
-  .nodeName {
-    flex-grow: 1;
-    width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+
   .node-anchor {
     display: flex;
     position: absolute;
@@ -188,8 +217,38 @@ export default {
     margin-top: calc((@nodeSize / 2)*-1);
   }
 }
+
 .active{
-  border: 1px dashed @labelColor;
-  box-shadow: 0px 5px 9px 0px rgba(0,0,0,0.5);
+  // border: 2px dashed @labelColor;
+  box-shadow: 0px 5px 9px 0px rgba(0,0,0,0.3);
 }
+// 开始节点样式
+.startNode .log-wrap {
+  color: #d8f4e9;
+  border: 1px solid #d8f4e9 !important;
+  border-radius: 4px;
+  background-color: #ecfcf6;
+  transition: color 0.3s ease-out, background-color 0.3s ease-out;
+}
+// 结束节点样式
+.endNode .log-wrap {
+  color: #f16b6f;
+  border: 1px solid #f9c4c5 !important;
+  border-radius: 4px;
+  background-color: #fef0f1;
+  transition: color 0.3s ease-out, background-color 0.3s ease-out;
+}
+// 判断节点样式
+.judgeNode .log-wrap {  
+  color: #ee8912;
+  border: 1px solid #f8d0a0 !important;
+  background-color: #fdf3e7;
+  transition: color 0.3s ease-out, background-color 0.3s ease-out;
+  transform: rotate(45deg) scale(0.8);
+  img{
+    transform: rotate(-45deg);
+  }
+}
+
+
 </style>

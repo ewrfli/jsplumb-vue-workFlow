@@ -6,11 +6,14 @@ import Contextmenu from 'vue-contextmenujs'
 import ViewUI from 'view-design';
 import 'view-design/dist/styles/iview.css';
 import '@/style/index.less'
+import ElementUI from 'element-ui';
+import 'element-ui/lib/theme-chalk/index.css';
 
 Vue.config.productionTip = false
 
 Vue.use(Contextmenu);
 Vue.use(ViewUI);
+Vue.use(ElementUI);
 new Vue({
   router,
   store,

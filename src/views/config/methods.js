@@ -2,19 +2,38 @@ import panzoom from "panzoom";
 import { GenNonDuplicateID } from "@/common/until";
 
 const methods = {
+  /**
+   * 初始化jsplumb
+   * @description 初始化jsplumb
+   * @param {object} item 当前
+   * @param {object} event 当前
+   */
   init() {
+    //写入ready的方法在初始化后自动挂载执行，无需再次引用
     this.jsPlumb.ready(() => {
       // 导入默认配置
       this.jsPlumb.importDefaults(this.jsplumbSetting);
       //完成连线前的校验
       this.jsPlumb.bind("beforeDrop", evt => {
-        let res = () => { } //此处可以添加是否创建连接的校验， 返回 false 则不添加； 
-        return res
+        console.log('beforeDrop',evt)
+        // let res = () => {
+        //  } //此处可以添加是否创建连接的校验， 返回 false 则不添加；
+        if (evt.sourceId === evt.targetId) {
+          return false
+        } else {
+          return true
+        }
       })
       // 连线创建成功后，维护本地数据
-      this.jsPlumb.bind("connection", evt => {
-        this.addLine(evt)
-      });
+      // this.jsPlumb.bind("connection", evt => {
+      //   console.log('连线 connection',evt)
+      //   this.addLine(evt)
+      // });
+      //连线单击事件
+      this.jsPlumb.bind("click",(conn, originalEvent) => {
+        console.log('连线单击事件',conn)
+        // this.changeSingleLineState(conn)
+      })
       //连线双击删除事件
       this.jsPlumb.bind("dblclick",(conn, originalEvent) => {
         this.confirmDelLine(conn)
@@ -26,11 +45,21 @@ const methods = {
       this.loadEasyFlow();
       // 会使整个jsPlumb立即重绘。
       this.jsPlumb.setSuspendDrawing(false, true);
+      // 键盘按键监听
+      // document.addEventListener('keyup', (conn, originalEventConn) => {
+      //   let event = originalEventConn || window.event
+      //   // 8--backspace, 46--delete
+      //   if (event.keyCode === 8 || event.keyCode === 46) {
+      //     // this.confirmDelLine(conn)
+      //   }
+      // })
     });
     this.initPanZoom();
   },
-  // 加载流程图
+  // 加载流程图-初始化节点，使节点可以拖拽
   loadEasyFlow() {
+    let _this = this
+    console.log('加载流程图 loadEasyFlow')
     // 初始化节点
     for (let i = 0; i < this.data.nodeList.length; i++) {
       let node = this.data.nodeList[i];
@@ -42,31 +71,98 @@ const methods = {
       this.draggableNode(node.id)
     }
 
+    // let tempJudgeNodeIdArray = []
+    // this.data.nodeList.forEach(item => {
+    //   // console.log(item)
+    //   if(item.type === "judgeNode"){
+    //     tempJudgeNodeIdArray.push(item.id)
+    //   }
+    // })
+    // console.log('tempJudgeNodeIdArray',tempJudgeNodeIdArray)
+
     // 初始化连线
     this.jsPlumb.unbind("connection"); //取消连接事件
+    console.log('初始化连线')
     for (let i = 0; i < this.data.lineList.length; i++) {
       let line = this.data.lineList[i];
-      this.jsPlumb.connect(
+      // console.log('tempJudgeNodeIdArray.indexOf(line.from)',line,tempJudgeNodeIdArray.indexOf(line.from))
+      let connectOBJ = this.jsPlumb.connect(
         {
           source: line.from,
-          target: line.to
+          target: line.to,
+          overlays: [ // 连线上按钮
+            ['Label', {
+              location:0.5,
+              id:'line-node-btn',
+              label: '<div class="line-node-btn"></div>',
+              events: {
+                click: function (labelOverlay, originalEvent) {
+                  console.log('连线上按钮 click' + labelOverlay.component,originalEvent)
+                  _this.insertNewNode(originalEvent,connectOBJ)
+                }
+              }
+            }],
+            line.Remark.length > 0 ?
+            ['Label', {
+              location:[0.9],
+              label: `<div class="judge-false-text">${line.Remark}</div>`,
+            }]
+            : [
+              'Label', {
+                location:[0.9],
+                label: '',
+              }
+            ]
+          ]
         },
         this.jsplumbConnectOptions
       );
+      // console.log('connectOBJ',connectOBJ.sourceId)
     }
-    this.jsPlumb.bind("connection", evt => {
-      let from = evt.source.id;
-      let to = evt.target.id;
-      this.data.lineList.push({
-        from: from,
-        to: to,
-        label: "连线名称",
-        id: GenNonDuplicateID(8),
-        Remark: ""
-      });
+    // 监听 连接建立 连接建立时触发
+    this.jsPlumb.bind("connection", (info, originalEvent) => {
+      console.log('监听到新增连线 connection',info)
+      info.connection.addOverlay(
+        ['Label',{
+          location:0.5,
+          id:'line-node-btn',
+          label: '<div class="line-node-btn"></div>',
+          events: {
+            click: function (labelOverlay, originalEvent) {
+              console.log('新连线上按钮 click' + labelOverlay.component,originalEvent)
+              _this.insertNewNode(originalEvent, info.connection)
+            }
+          }
+        }]
+      );
+      // console.log('info.source.classList',info.source.classList.value.indexOf('judgeNode'))
+      if(info.source.classList.value.indexOf('judgeNode') >-1){
+        info.connection.addOverlay(
+          ['Label', {
+            location:[0.9],
+            label: `<div class="judge-false-text">${info.source.textContent}</div>`,
+          }]
+        );
+      }
+      // 维护连线数据
+      let evt ={
+        sourceId: info.source.id,
+        targetId: info.target.id,
+        Remark: info.source.classList.value.indexOf('judgeNode') >-1 ? info.source.textContent : ''
+      }
+      this.addLine(evt)
     });
   },
+  // 传入当前LineNodeBtn信息
+  insertNewNode(Event,connection){
+    console.log('insertNewNode',Event,connection)
+    this.TempLineNodeBtnLine = connection //LineNodeBtn按钮所属的线传过去
+    this.TempLineNodeBtnEventInfo = Event //LineNodeBtn按钮位置传过去
+    this.nodeTypeListDialog = true
+  },
+  // 左侧边栏 拖拽
   draggableNode(nodeId) {
+    console.log('draggableNode 拖拽')
     this.jsPlumb.draggable(nodeId, {
       grid: this.commonGrid,
       drag: (params) => {
@@ -99,7 +195,7 @@ const methods = {
     this.auxiliaryLine.isShowXLine = showXLine
   },
   changeNodePosition(nodeId, pos) {
-    this.data.nodeList.some(v => {
+        this.data.nodeList.some(v => {
       if(nodeId == v.id) {
         v.left = pos[0] +'px'
         v.top = pos[1] + 'px'
@@ -109,13 +205,24 @@ const methods = {
       }
     })
   },
+  // 对话框的node插入LineNodeBtn位置
+  dialogNodeDrag(eventInfo, lineInfo, item) {
+    console.log('dialogNodeDrag',eventInfo,lineInfo,item)
+    this.currentItem = item;
+    let isInsert = true
+    this.drop(eventInfo, lineInfo, isInsert) //放置node
+    this.jsPlumb.deleteConnection(lineInfo) //删除连线
+    this.nodeTypeListDialog = false //关闭对话框
+  },
   drag(ele, item) {
+    console.log('drag',ele,item)
     this.currentItem = item;
   },
-  drop(event) {
+  drop(event, lineInfo, isInsert) {
+    console.log('drop',event,this.jsPlumb)
     const containerRect = this.jsPlumb.getContainer().getBoundingClientRect();
     const scale = this.getScale();
-    let left = (event.pageX - containerRect.left -60) / scale;
+    let left = (event.pageX - containerRect.left - 20) / scale;
     let top = (event.pageY - containerRect.top -20) / scale;
 
     var temp = {
@@ -124,17 +231,18 @@ const methods = {
       top: (Math.round(top/20))*20 + "px",
       left:  (Math.round(left/20))*20 + "px"
     };
-    this.addNode(temp);
+    this.addNode(temp, lineInfo, isInsert);
   },
   addLine(line) {
-    let from = line.source.id;
-    let to = line.target.id;
+    console.log('连线addLine',line)
+    let from = line.sourceId;
+    let to = line.targetId;
     this.data.lineList.push({
       from: from,
       to: to,
-      label: "连线名称",
+      label: "连线名称新",
       id: GenNonDuplicateID(8),
-      Remark: ""
+      Remark: line.Remark
     });
   },
   confirmDelLine(line) {
@@ -170,15 +278,33 @@ const methods = {
     return scale1;
   },
   // 添加新的节点
-  addNode(temp) {
+  addNode(temp, lineInfo, isInsert) {
+    console.log('addNode',temp, lineInfo, isInsert)
     this.data.nodeList.push(temp);
-    this.$nextTick(() => {
+    this.$nextTick(() => { //增加拖拽配置
       this.jsPlumb.makeSource(temp.id, this.jsplumbSourceOptions);
       this.jsPlumb.makeTarget(temp.id, this.jsplumbTargetOptions);
       this.draggableNode(temp.id)
+      if(isInsert){
+        // 增加连线
+        this.insertNodeConnect(lineInfo.sourceId, temp.id)
+        this.insertNodeConnect(temp.id, lineInfo.targetId)
+      }
     });
-  },
 
+  },
+  //两点连线
+  insertNodeConnect(sourceId, targetId){
+    console.log('insertNodeConnect',sourceId,targetId)
+    this.jsPlumb.connect(
+      {
+        source: sourceId,
+        target: targetId,
+      },
+      this.jsplumbConnectOptions
+    )
+    // 连完线维护数据
+  },
   initPanZoom() {
     const mainContainer = this.jsPlumb.getContainer();
     const mainContainerWrap = mainContainer.parentNode;
@@ -191,7 +317,7 @@ const methods = {
       maxZoom: 2,
       //设置滚动缩放的组合键，默认不需要组合键
       beforeWheel: (e) => {
-        console.log(e)
+        // console.log(e)
         // let shouldIgnore = !e.ctrlKey
         // return shouldIgnore
       },
@@ -244,7 +370,16 @@ const methods = {
       }
     })
   },
-
+  // 删除节点前置
+  toDeleteNode(node) {
+    console.log('deleteNode',node)
+    let relatedLineArray =  this.getNodeRelatedLine(node.id)
+    console.log(relatedLineArray)
+    if(relatedLineArray.length >= 2){ //则是中间节点 删除前需链接上下两个节点
+      this.connectRelatedLineNode(relatedLineArray,node.id)
+    }
+    this.deleteNode(node)
+  },
   //删除节点
   deleteNode(node) {
     this.data.nodeList.some((v,index) => {
@@ -257,13 +392,46 @@ const methods = {
       }
     })
   },
-
+  // 链接当前node的上下两个节点
+  connectRelatedLineNode(relatedLineArray ,curNodeId){
+    let upNodeArray = []
+    let downNodeArray = []
+    relatedLineArray.forEach(line => {
+      console.log('connectRelatedLineNode',line)
+      if(line.targetId === curNodeId){
+        console.log('这是上节点',line.sourceId)
+        upNodeArray.push(line.sourceId)
+      }
+      if(line.sourceId === curNodeId){
+        console.log('这是下节点',line.targetId)
+        downNodeArray.push(line.targetId)
+      }
+    })
+    downNodeArray.forEach(downNode => {
+      upNodeArray.forEach(upNode => {
+        console.log('上'+upNode+'下'+downNode)
+        this.insertNodeConnect(upNode,downNode)
+      })
+    })
+  },
+  // 获取节点相关line
+  getNodeRelatedLine(nodeId){
+    let lines = this.jsPlumb.getAllConnections()
+    let tempArray = []
+    lines.forEach(line => {
+      if(line.targetId === nodeId || line.sourceId === nodeId) {
+        tempArray.push(line)
+      }
+    })
+    return tempArray
+  },
   //更改连线状态
   changeLineState(nodeId, val) {
-    console.log(val)
+    console.log('changeLineState',nodeId, val)
     let lines = this.jsPlumb.getAllConnections()
     lines.forEach(line => {
       if(line.targetId === nodeId || line.sourceId === nodeId) {
+        console.log(line)
         if(val) {
           line.canvas.classList.add('active')
         }else {
@@ -273,7 +441,18 @@ const methods = {
     })
   },
 
-  //初始化节点位置  （以便对齐,居中）
+  // 激活连线 
+  changeSingleLineState(conn){
+    console.log('激活连线',conn)
+    // if(conn.canvas.classList.length == 2) {
+    //   conn.canvas.classList.add('active')
+    // }else {
+    //   conn.canvas.classList.remove('active')
+    // }
+  },
+  /**
+   * @description 初始化节点位置（以便对齐,居中）
+   */
   fixNodesPosition() {
     if(this.data.nodeList && this.$refs.flowWrap) {
       const nodeWidth = 120

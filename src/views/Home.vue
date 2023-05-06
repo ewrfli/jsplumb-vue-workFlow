@@ -1,20 +1,26 @@
 <template>
   <div class="flow_region">
+    <!-- 左侧栏 -->
     <div class="nodes-wrap">
-      <div v-for="item in nodeTypeList" :key="item.type" class="node" draggable="true" @dragstart="drag($event, item)">
+      <div v-for="item in nodeTypeList" :key="item.nodeName" class="node" draggable="true" @dragstart="drag($event, item)">
         <div class="log">
           <img :src="item.logImg" alt="">
         </div>
-        <div class="name">{{item.typeName}}</div>
+        <div class="name">{{item.nodeName}}</div>
       </div>
     </div>
+    <!-- 画布 -->
     <div id="flowWrap" ref="flowWrap" class="flow-wrap" @drop="drop($event)" @dragover="allowDrop($event)">
       <div id="flow">
         <div v-show="auxiliaryLine.isShowXLine" class="auxiliary-line-x" :style="{width: auxiliaryLinePos.width, top:auxiliaryLinePos.y + 'px', left: auxiliaryLinePos.offsetX + 'px'}"></div>
         <div v-show="auxiliaryLine.isShowYLine" class="auxiliary-line-y" :style="{height: auxiliaryLinePos.height, left:auxiliaryLinePos.x + 'px', top: auxiliaryLinePos.offsetY + 'px'}"></div>
-        <flowNode v-for="item in data.nodeList" :id="item.id" :key="item.id" :node="item" @setNodeName="setNodeName" @deleteNode = "deleteNode" @changeLineState="changeLineState"></flowNode>
+        <flowNode v-for="item in data.nodeList" :id="item.id" :key="item.id" :node="item" @setNodeName="setNodeName" @toDeleteNode = "toDeleteNode" @changeLineState="changeLineState"></flowNode>
       </div>
     </div>
+    <div class="button-div">
+      <button @click="showCurData">保存</button>
+    </div>
+    <nodeTypeListDialog :dialogVisible.sync="nodeTypeListDialog" :nodeTypeList="nodeTypeList" :eventInfo.sync="TempLineNodeBtnEventInfo" :lineInfo.sync="TempLineNodeBtnLine" :faDialogNodeDrag="dialogNodeDrag"></nodeTypeListDialog>
   </div>
 </template>
 
@@ -23,20 +29,25 @@ import { jsPlumb } from "jsplumb"
 import { nodeTypeList } from './config/init'
 import { jsplumbSetting, jsplumbConnectOptions, jsplumbSourceOptions, jsplumbTargetOptions } from './config/commonConfig'
 import methods from "./config/methods"
-import data from './config/data.json'
+import data from './config/data.json'//画布上节点信息
 import flowNode from "./components/node-item"
+import nodeTypeListDialog from "./components/nodeTypeListDialog.vue"
 export default {
   name: "FlowEdit",
   components: {
-    flowNode
+    flowNode,
+    nodeTypeListDialog
   },
   data() {
     return {
+      TempLineNodeBtnEventInfo: null,//LineNodeBtn按钮位置
+      TempLineNodeBtnLine: null,// LineNodeBtn按钮所属的线
+      nodeTypeListDialog: false,
       jsPlumb: null,
       currentItem: null,
       nodeTypeList: nodeTypeList,
       nodeTypeObj: {},
-      data: {
+      data: { //画布上节点信息
         nodeList: [],
         lineList: []
       },
@@ -61,15 +72,18 @@ export default {
   },
   mounted() {
     this.jsPlumb = jsPlumb.getInstance();
-    this.initNodeTypeObj()
-    this.initNode()
-    this.fixNodesPosition()
+    this.initNodeTypeObj() //左侧边栏
+    this.initNode() //画布节点
+    this.fixNodesPosition() // 初始化节点位置 
     this.$nextTick(() => {
       this.init();
     });
   },
   methods: {
     ...methods,
+    showCurData(){
+      console.log('data',JSON.stringify(this.data))
+    },
     initNodeTypeObj() {
       nodeTypeList.map(v => {
         this.nodeTypeObj[v.type] = v
@@ -106,7 +120,7 @@ export default {
       border: 1px solid #ccc;
       line-height: 40px;
       &:hover{
-        cursor: grab;
+        // cursor: grab;
       }
       &:active{
         cursor: grabbing;
@@ -150,9 +164,10 @@ export default {
 <style lang="less">
 .jtk-connector.active{
   z-index: 9999;
+  // 连接线激活
   path {
     stroke: #150042;
-    stroke-width: 1.5;
+    stroke-width: 2;
     animation: ring;
     animation-duration: 3s;
     animation-timing-function: linear;
@@ -168,4 +183,56 @@ export default {
     stroke-dashoffset: 0;
   }
 }
+// 连线上按钮样式
+.line-node-btn {
+  position: relative;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    color: #9ca8b4;
+    border: 1px dashed #9ca8b4;
+    border-radius: 50%;
+    background-color: #ffffff;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+    z-index: 1;
+    transition: width 0.15s ease-out, height 0.15s ease-out;
+
+  }
+  .line-node-btn::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 12px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #9ca8b4;
+  }
+  .line-node-btn::before {
+    content: '';
+    position: absolute;
+    width: 12px;
+    height: 1px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #9ca8b4;
+  }
+  .judge-false-text {
+    color: #ff4f63;
+    position: absolute;
+    left: 15px;
+    top: -5px;
+    white-space: nowrap;
+  }
+  .judge-true-text {
+    color: #6fd028;
+    position: absolute;
+    left: 15px;
+    top: -5px;
+    white-space: nowrap;
+  }
 </style>
